@@ -2,7 +2,6 @@
 
 <html>
     <head>
-
         <meta charset="utf-8">
         <meta name="description" content="WebRTC code samples">
         <meta name="viewport" content="width=device-width, user-scalable=yes, initial-scale=1, maximum-scale=1">
@@ -13,48 +12,39 @@
 
         <base target="_blank">
 
-        <title>Select video sources</title>
+        <title>AP Identifier</title>
 
         <link href="//fonts.googleapis.com/css?family=Roboto:300,400,500,700" rel="stylesheet" type="text/css">
         <link href="css/main.css" rel="stylesheet" type="text/css"> 
 
-        <style>
-            div.select {
-                display: inline-block;
-                margin: 0 0 1em 0;
-            }
-
-            p.small {
-                font-size: 0.7em;
-            }
-
-            label {
-                width: 12em;
-                display: inline-block;
-            }
-        </style>
-
+        <script src="https://webrtc.github.io/adapter/adapter-latest.js"></script>
+        <script src="js/main.js" async></script>
     </head>
 
     <body>
+
         <div id="container">
 
-            <p>Get available video sources from <code>mediaDevices.enumerateDevices()</code>
-                then set the source for <code>getUserMedia()</code> using a <code>deviceId</code> constraint.</p>
-            <p><b>Note:</b> without permission, the browser will restrict the available devices to at most one per type.</p>
+            <h2>Welcome to AP Scanner v0.0</h2>
 
-            <div class="select">
-                <label for="videoSource">Video source: </label><select id="videoSource"></select>
+            <ol>
+                <li>Allow access to your camera device to be able to launch video stream.</li>
+                <li>Try to center the camera frame on the Access point for the best results.</li>
+                <li>Click on Scan AP to start scanning the Access point.</li>
+            </ol>
+
+            <div id="video-capture-container">
+                <div class="select">
+                    <label for="videoSource">Video source: </label><select id="videoSource"></select>
+                </div>
+             
+                <div class="camera-container">
+                    <video id="video" playsinline autoplay></video>
+                </div>
+                <br>
+    
+                <button>Scan AP</button>
             </div>
-
-            
-
-            <div class="camera-container">
-                <video id="video" playsinline autoplay></video>
-            </div>
-
-        <script src="https://webrtc.github.io/adapter/adapter-latest.js"></script>
-        <script src="js/main.js" async></script>
 
     </body>
 </html>

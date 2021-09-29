@@ -1,5 +1,47 @@
-.camera-container{
-    border: black;
+
+* {
+    font-family: Arial, Helvetica, sans-serif;
+}
+
+body {
+    margin: 0 auto;
+}
+
+div.select {
+    display: inline-block;
+    margin: 0 0 1em 0;
+}
+
+p.small {
+    font-size: 0.7em;
+}
+
+label {
+    padding-right: 2em;
+    display: inline-block;
+}
+
+#container {
+    padding: 1em;
+}#container ol {
+    padding-left: 1em;
+}#container li {
+    color: rgb(96, 129, 190);
+}
+
+#video-capture-container {
+    text-align: center;
+}#video-capture-container button {
+    background-color: rgb(125, 155, 209);
+    color: white;
+    border: none;
+    border-radius: 2px;
+    padding: 1em;
+    font-size: 1em;
+    font-weight: 500;
+}
+
+.camera-container {
     border-radius: 5px;
     background-color: lightgray;
     margin: 0 auto;
@@ -7,7 +49,10 @@
     align-items: center;
     justify-content: center;
     width:fit-content;
-    padding: 15px;
+    padding: 3px;
+}
 
-    
+#video {
+    border-radius: 5px;
+    width: 100%;
 }
