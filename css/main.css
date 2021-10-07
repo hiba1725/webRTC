@@ -63,8 +63,8 @@ label {
 #square-overlay {
     border: 5px solid blue;
     opacity: 50%;
-    width: 60%;
-    height: 79.75%;
+    max-width: 50vw;
+    max-height: 50vw;
     position: absolute;
     margin: auto;
     top :0; left: 0; right: 0; bottom: 0;
