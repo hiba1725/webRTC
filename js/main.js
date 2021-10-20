@@ -30,16 +30,19 @@ function gotDevices(deviceInfos) {
 
 navigator.mediaDevices.enumerateDevices().then(gotDevices).catch(handleError);
 
-function gotStream(stream) {
+/*function gotStream(stream) {
   window.stream = stream; // make stream available to console
   videoElement.srcObject = stream;
   // Refresh button list in case labels have become available
   return navigator.mediaDevices.enumerateDevices();
-}
+}*/
 
 function handleError(error) {
   console.log('navigator.MediaDevices.getUserMedia error: ', error.message, error.name);
 }
+
+let streaming = false;
+let stream = null;
 
 function start() {
   if (window.stream) {
@@ -52,7 +55,16 @@ function start() {
     audio: false,
     video: {deviceId: videoSource ? {exact: videoSource} : undefined}
   };
-  navigator.mediaDevices.getUserMedia(constraints).then(gotStream).then(gotDevices).catch(handleError);
+  navigator.mediaDevices.getUserMedia(constraints)//.then(gotStream).then(gotDevices).catch(handleError);
+  navigator.mediaDevices.getUserMedia(constraints)
+  .then(function(s){
+    window.stream=s;
+    videoElement.srcObject=s;
+    video.play();
+    return navigator.mediaDevices.enumerateDevices();
+  })
+  .then(gotDevices)
+  .catch(handleError);
 }
 
 
