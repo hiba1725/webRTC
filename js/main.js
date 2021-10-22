@@ -1,5 +1,6 @@
 const videoElement = document.querySelector('video');
 const videoSelect = document.querySelector('select#videoSource');
+const startProcessingButton = document.getElementById('processButton');
 const selectors = [videoSelect];
 
 function gotDevices(deviceInfos) {
@@ -43,6 +44,10 @@ function handleError(error) {
 
 let streaming = false;
 let stream = null;
+let vc = null;
+let width = 0;
+let height=0;
+
 
 function start() {
   if (window.stream) {
@@ -60,14 +65,155 @@ function start() {
   .then(function(s){
     window.stream=s;
     videoElement.srcObject=s;
-    video.play();
+    videoElement.play();
     return navigator.mediaDevices.enumerateDevices();
   })
   .then(gotDevices)
   .catch(handleError);
+  videoElement.addEventListener("canplay", function(ev){
+    if (!streaming) {
+      width = videoElement.clientWidth;
+      height = videoElement.clientHeight / (videoElement.clientWidth/width);
+      videoElement.setAttribute("width", width);
+      videoElement.setAttribute("height", height);
+      streaming = true;
+      vc = new cv.VideoCapture(videoElement);
+    }
+  }, false);
 }
-
 
 videoSelect.onchange = start;
 
 start();
+
+startProcessingButton.onclick= function(){
+  videoSelect.disabled = true;
+  startVideoProcessing();}
+
+let lastFilter = '';
+let src = null;
+let dstC1 = null;
+let dstC3 = null;
+let dstC4 = null;
+
+function startVideoProcessing() {
+  if (!streaming) { console.warn("Please startup your webcam"); return; }
+  stopVideoProcessing();
+  src = new cv.Mat(height, width, cv.CV_8UC4);
+  dstC1 = new cv.Mat(height, width, cv.CV_8UC1);
+  dstC3 = new cv.Mat(height, width, cv.CV_8UC3);
+  dstC4 = new cv.Mat(height, width, cv.CV_8UC4);
+  requestAnimationFrame(processVideo);
+}
+
+function passThrough(src) {
+  return src;
+}
+
+function gray(src) {
+  cv.cvtColor(src, dstC1, cv.COLOR_RGBA2GRAY);
+  return dstC1;
+}
+
+function threshold(src) {
+  cv.threshold(src, dstC4, controls.thresholdValue, 200, cv.THRESH_BINARY);
+  return dstC4;
+}
+
+function processVideo() {
+  stats.begin();
+  vc.read(src);
+  let result;
+  switch (controls.filter) {
+    case 'passThrough': result = passThrough(src); break;
+    case 'gray': result = gray(src); break;
+    case 'threshold': result = threshold(src); break;
+    default: result = passThrough(src);
+  }
+  
+  cv.imshow("canvasOutput", result);
+  stats.end();
+  lastFilter = controls.filter;
+  requestAnimationFrame(processVideo);
+}
+
+function stopVideoProcessing() {
+  if (src != null && !src.isDeleted()) src.delete();
+  if (dstC1 != null && !dstC1.isDeleted()) dstC1.delete();
+  if (dstC4 != null && !dstC4.isDeleted()) dstC4.delete();
+}
+function stopCamera() {
+  if (!streaming) return;
+  stopVideoProcessing();
+  document.getElementById("canvasOutput").getContext("2d").clearRect(0, 0, width, height);
+  videoElement.pause();
+  videoElement.srcObject=null;
+  stream.getVideoTracks()[0].stop();
+  streaming = false;
+}
+
+var stats = null;
+
+var filters = {
+  'passThrough': 'Pass Through',
+  'gray': 'Gray',
+  'threshold': 'Threshold',
+};
+
+var filterName = document.getElementById('filterName');
+
+var controls;
+
+function initUI() {
+  stats = new Stats();
+  stats.showPanel(0);
+  document.getElementById('container').appendChild(stats.domElement);
+
+  controls = {
+    filter: 'passThrough',
+    setFilter: function(filter) {
+      this.filter = filter;
+      filterName.innerHTML = filters[filter];
+    },
+    passThrough: function() { this.setFilter('passThrough'); },
+    gray: function() { this.setFilter('gray'); },
+    threshold: function() { this.setFilter('threshold'); },
+    thresholdValue: 100,
+  };
+  
+  let gui = new dat.GUI({ autoPlace: false });
+  let guiContainer = document.getElementById('guiContainer');
+  guiContainer.appendChild(gui.domElement);
+  
+  let lastFolder = null;
+  function closeLastFolder(folder) {
+    if (lastFolder != null && lastFolder != folder) {
+      lastFolder.close();
+    }
+    lastFolder = folder;
+  }
+  
+  let passThrough = gui.add(controls, 'passThrough').name(filters['passThrough']).onChange(function() {
+    closeLastFolder(null);
+  });
+
+  let colorConversion = gui.addFolder('Color Conversion');
+  colorConversion.add(controls, 'gray').name(filters['gray']).onChange(function() {
+    closeLastFolder(null);
+  });
+  
+  
+  let threshold = gui.addFolder('Thresholding');
+  
+  threshold.domElement.onclick = function() {
+    closeLastFolder(threshold);
+    controls.threshold();
+  };
+  threshold.add(controls, 'thresholdValue', 0, 200, 1).name('threshold value');
+}
+
+function opencvIsReady() {
+  console.log('OpenCV.js is ready');
+  initUI();
+  start();
+}
