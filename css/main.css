@@ -55,6 +55,11 @@ label {
     height: 100%;
 }
 
+#canvasOutput {
+    display: block;
+    margin-bottom: 2px;
+}
+
 #video {
     border-radius: 5px;
     width: 100%;
