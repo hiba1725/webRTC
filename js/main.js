@@ -31,13 +31,6 @@ function gotDevices(deviceInfos) {
 
 navigator.mediaDevices.enumerateDevices().then(gotDevices).catch(handleError);
 
-/*function gotStream(stream) {
-  window.stream = stream; // make stream available to console
-  videoElement.srcObject = stream;
-  // Refresh button list in case labels have become available
-  return navigator.mediaDevices.enumerateDevices();
-}*/
-
 function handleError(error) {
   console.log('navigator.MediaDevices.getUserMedia error: ', error.message, error.name);
 }
@@ -60,7 +53,7 @@ function start() {
     audio: false,
     video: {deviceId: videoSource ? {exact: videoSource} : undefined}
   };
-  navigator.mediaDevices.getUserMedia(constraints)//.then(gotStream).then(gotDevices).catch(handleError);
+  navigator.mediaDevices.getUserMedia(constraints)
   navigator.mediaDevices.getUserMedia(constraints)
   .then(function(s){
     window.stream=s;
@@ -88,7 +81,8 @@ start();
 
 startProcessingButton.onclick= function(){
   videoSelect.disabled = true;
-  startVideoProcessing();}
+  startVideoProcessing();
+}
 
 let lastFilter = '';
 let src = null;
@@ -97,7 +91,10 @@ let dstC3 = null;
 let dstC4 = null;
 
 function startVideoProcessing() {
-  if (!streaming) { console.warn("Please startup your webcam"); return; }
+  if (!streaming) { 
+    console.warn("Please startup your webcam"); 
+    return;
+  }
   stopVideoProcessing();
   src = new cv.Mat(height, width, cv.CV_8UC4);
   dstC1 = new cv.Mat(height, width, cv.CV_8UC1);
@@ -141,15 +138,6 @@ function stopVideoProcessing() {
   if (src != null && !src.isDeleted()) src.delete();
   if (dstC1 != null && !dstC1.isDeleted()) dstC1.delete();
   if (dstC4 != null && !dstC4.isDeleted()) dstC4.delete();
-}
-function stopCamera() {
-  if (!streaming) return;
-  stopVideoProcessing();
-  document.getElementById("canvasOutput").getContext("2d").clearRect(0, 0, width, height);
-  videoElement.pause();
-  videoElement.srcObject=null;
-  stream.getVideoTracks()[0].stop();
-  streaming = false;
 }
 
 var stats = null;
