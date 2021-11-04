@@ -112,6 +112,11 @@ function gray(src) {
   return dstC1;
 }
 
+function gaussianBlur(src) {
+  cv.GaussianBlur(src, dstC4, {width: controls.gaussianBlurSize, height: controls.gaussianBlurSize}, 0, 0, cv.BORDER_DEFAULT);
+  return dstC4;
+}
+
 function threshold(src) {
   cv.threshold(src, dstC4, controls.thresholdValue, 200, cv.THRESH_BINARY);
   return dstC4;
@@ -124,6 +129,7 @@ function processVideo() {
   switch (controls.filter) {
     case 'passThrough': result = passThrough(src); break;
     case 'gray': result = gray(src); break;
+    case 'gaussianBlur': result = gaussianBlur(src); break;
     case 'threshold': result = threshold(src); break;
     default: result = passThrough(src);
   }
@@ -144,6 +150,7 @@ var stats = null;
 
 var filters = {
   'passThrough': 'Pass Through',
+  'gaussianBlur': 'Gaussian Blurring',
   'gray': 'Gray',
   'threshold': 'Threshold',
 };
@@ -164,6 +171,8 @@ function initUI() {
       filterName.innerHTML = filters[filter];
     },
     passThrough: function() { this.setFilter('passThrough'); },
+    gaussianBlur: function() { this.setFilter('gaussianBlur'); },
+    gaussianBlurSize: 7,
     gray: function() { this.setFilter('gray'); },
     threshold: function() { this.setFilter('threshold'); },
     thresholdValue: 100,
@@ -190,6 +199,12 @@ function initUI() {
     closeLastFolder(null);
   });
   
+  let gaussianBlur = gui.addFolder(filters['gaussianBlur']);
+  gaussianBlur.domElement.onclick = function() {
+    closeLastFolder(gaussianBlur);
+    controls.gaussianBlur();
+  };
+  gaussianBlur.add(controls, 'gaussianBlurSize', 7, 99, 1).name('kernel size').onChange(function(value) { if (value % 2 === 0) controls.gaussianBlurSize = value + 1;});
   
   let threshold = gui.addFolder('Thresholding');
   
@@ -197,7 +212,7 @@ function initUI() {
     closeLastFolder(threshold);
     controls.threshold();
   };
-  threshold.add(controls, 'thresholdValue', 0, 200, 1).name('threshold value');
+  threshold.add(controls, 'thresholdValue', 0, 200, 1).name('threshold value');  
 }
 
 function opencvIsReady() {
