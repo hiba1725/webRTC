@@ -129,24 +129,17 @@ function superposeFilters(newFilter){
   if (newFilter== 'passThrough') {
     filtersArray = ['passThrough']; 
     previousFilter = src;
-    console.log('here')
+    //console.log('here')
     applyFilterCombination(filtersArray)
   }
       
-  if(filtersArray.includes(newFilter)){
-    let filterIndex = filtersArray.indexOf(newFilter);
-    filtersArray.splice(filterIndex,1);
-    applyFilterCombination(filtersArray);
-  }
-  else{
+  if(!filtersArray.includes(newFilter)){
     filtersArray.push(newFilter);
-    applyFilterCombination(filtersArray);
-    console.log(filtersArray)
   }
+  applyFilterCombination(filtersArray);
 }
 
 function applyFilterCombination(filtersArray){
-  
   filtersArray.forEach(val => {
     switch(val){
       case 'passThrough': previousFilter = passThrough(previousFilter); break;
@@ -154,7 +147,7 @@ function applyFilterCombination(filtersArray){
       case 'gaussianBlur':  previousFilter = gaussianBlur(previousFilter); break;
       case 'threshold': previousFilter = threshold(previousFilter); break;
     }
-    console.log(previousFilter);
+    //console.log(previousFilter);
   });
 }
 
@@ -162,6 +155,7 @@ function processVideo() {
   stats.begin();
   vc.read(src);
   let result;
+  previousFilter = src;
   switch (controls.filter) {
     case 'passThrough': superposeFilters('passThrough'); break;
     case 'gray': superposeFilters('gray'); break;
@@ -169,7 +163,7 @@ function processVideo() {
     case 'threshold': superposeFilters('threshold'); break;
     default: superposeFilters('passThrough');
   }
-  
+  console.log(filtersArray)  
   cv.imshow("canvasOutput", previousFilter);
   stats.end();
   lastFilter = controls.filter;
