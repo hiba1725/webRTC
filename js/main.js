@@ -89,6 +89,8 @@ let src = null;
 let dstC1 = null;
 let dstC3 = null;
 let dstC4 = null;
+let previousFilter = null; 
+let filtersArray = [];
 
 function startVideoProcessing() {
   if (!streaming) { 
@@ -100,6 +102,7 @@ function startVideoProcessing() {
   dstC1 = new cv.Mat(height, width, cv.CV_8UC1);
   dstC3 = new cv.Mat(height, width, cv.CV_8UC3);
   dstC4 = new cv.Mat(height, width, cv.CV_8UC4);
+  previousFilter = src;
   requestAnimationFrame(processVideo);
 }
 
@@ -122,19 +125,52 @@ function threshold(src) {
   return dstC4;
 }
 
+function superposeFilters(newFilter){
+  if (newFilter== 'passThrough') {
+    filtersArray = ['passThrough']; 
+    previousFilter = src;
+    console.log('here')
+    applyFilterCombination(filtersArray)
+  }
+      
+  if(filtersArray.includes(newFilter)){
+    let filterIndex = filtersArray.indexOf(newFilter);
+    filtersArray.splice(filterIndex,1);
+    applyFilterCombination(filtersArray);
+  }
+  else{
+    filtersArray.push(newFilter);
+    applyFilterCombination(filtersArray);
+    console.log(filtersArray)
+  }
+}
+
+function applyFilterCombination(filtersArray){
+  
+  filtersArray.forEach(val => {
+    switch(val){
+      case 'passThrough': previousFilter = passThrough(previousFilter); break;
+      case 'gray':  previousFilter = gray(previousFilter); break;
+      case 'gaussianBlur':  previousFilter = gaussianBlur(previousFilter); break;
+      case 'threshold': previousFilter = threshold(previousFilter); break;
+    }
+    console.log(previousFilter);
+  });
+}
+
 function processVideo() {
   stats.begin();
   vc.read(src);
   let result;
   switch (controls.filter) {
-    case 'passThrough': result = passThrough(src); break;
-    case 'gray': result = gray(src); break;
-    case 'gaussianBlur': result = gaussianBlur(src); break;
-    case 'threshold': result = threshold(src); break;
-    default: result = passThrough(src);
+    case 'passThrough': superposeFilters('passThrough'); break;
+    case 'gray': superposeFilters('gray'); break;
+    case 'gaussianBlur': superposeFilters('gaussianBlur'); break;
+    case 'threshold': superposeFilters('threshold'); break;
+    default: superposeFilters('passThrough');
   }
   
-  cv.imshow("canvasOutput", result);
+  cv.imshow("canvasOutput", previousFilter);
   stats.end();
   lastFilter = controls.filter;
   requestAnimationFrame(processVideo);
