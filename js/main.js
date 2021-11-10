@@ -125,6 +125,188 @@ function threshold(src) {
   return dstC4;
 }
 
+function hsv(src) {
+  cv.cvtColor(src, dstC3, cv.COLOR_RGBA2RGB);
+  cv.cvtColor(dstC3, dstC3, cv.COLOR_RGB2HSV);
+  return dstC3;
+}
+
+function canny(src) {
+  cv.cvtColor(src, dstC1, cv.COLOR_RGBA2GRAY);
+  cv.Canny(dstC1, dstC1, controls.cannyThreshold1, controls.cannyThreshold2, controls.cannyApertureSize, controls.cannyL2Gradient);
+  return dstC1;
+}
+
+function inRange(src) {
+  let lowValue = controls.inRangeLow;
+  let lowScalar = new cv.Scalar(lowValue, lowValue, lowValue, 255);
+  let highValue = controls.inRangeHigh;
+  let highScalar = new cv.Scalar(highValue, highValue, highValue, 255);
+  let low = new cv.Mat(height, width, src.type(), lowScalar);
+  let high = new cv.Mat(height, width, src.type(), highScalar);
+  cv.inRange(src, low, high, dstC1);
+  low.delete(); high.delete();
+  return dstC1;
+}
+
+function adaptiveThreshold(src) {
+  let mat = new cv.Mat(height, width, cv.CV_8U);
+  cv.cvtColor(src, mat, cv.COLOR_RGBA2GRAY);
+  cv.adaptiveThreshold(mat, dstC1, 200, cv.ADAPTIVE_THRESH_GAUSSIAN_C, cv.THRESH_BINARY, Number(controls.adaptiveBlockSize), 2);
+  mat.delete();
+  return dstC1;
+}
+
+function bilateralFilter(src) {
+  let mat = new cv.Mat(height, width, cv.CV_8UC3);
+  cv.cvtColor(src, mat, cv.COLOR_RGBA2RGB);
+  cv.bilateralFilter(mat, dstC3, controls.bilateralFilterDiameter, controls.bilateralFilterSigma, controls.bilateralFilterSigma, cv.BORDER_DEFAULT);
+  mat.delete();
+  return dstC3;
+}
+
+function medianBlur(src) {
+  cv.medianBlur(src, dstC4, controls.medianBlurSize);
+  return dstC4;
+}
+
+function sobel(src) {
+  var mat = new cv.Mat(height, width, cv.CV_8UC1);
+  cv.cvtColor(src, mat, cv.COLOR_RGB2GRAY, 0);
+  cv.Sobel(mat, dstC1, cv.CV_8U, 1, 0, controls.sobelSize, 1, 0, cv.BORDER_DEFAULT);
+  mat.delete();
+  return dstC1;
+}
+
+function scharr(src) {
+  var mat = new cv.Mat(height, width, cv.CV_8UC1);
+  cv.cvtColor(src, mat, cv.COLOR_RGB2GRAY, 0);
+  cv.Scharr(mat, dstC1, cv.CV_8U, 1, 0, 1, 0, cv.BORDER_DEFAULT);
+  mat.delete();
+  return dstC1;
+}
+
+function laplacian(src) {
+  var mat = new cv.Mat(height, width, cv.CV_8UC1);
+  cv.cvtColor(src, mat, cv.COLOR_RGB2GRAY);
+  cv.Laplacian(mat, dstC1, cv.CV_8U, controls.laplacianSize, 1, 0, cv.BORDER_DEFAULT);
+  mat.delete();
+  return dstC1;
+}
+
+let contoursColor = [];
+for (let i = 0; i < 10000; i++) {
+  contoursColor.push([Math.round(Math.random() * 255), Math.round(Math.random() * 255), Math.round(Math.random() * 255), 0]);
+}
+
+function contours(src) {
+  cv.cvtColor(src, dstC1, cv.COLOR_RGBA2GRAY);
+  cv.threshold(dstC1, dstC4, 120, 200, cv.THRESH_BINARY);
+  let contours  = new cv.MatVector();
+  let hierarchy = new cv.Mat();
+  cv.findContours(dstC4, contours, hierarchy, Number(controls.contoursMode), Number(controls.contoursMethod), {x: 0, y: 0});
+  dstC3.delete();
+  dstC3 = cv.Mat.ones(height, width, cv.CV_8UC3);
+  for (let i = 0; i<contours.size(); ++i)
+  {
+    let color = contoursColor[i];
+    cv.drawContours(dstC3, contours, i, color, 1, cv.LINE_8, hierarchy);
+  }
+  contours.delete(); hierarchy.delete();
+  return dstC3;
+}
+
+function calcHist(src) {
+  cv.cvtColor(src, dstC1, cv.COLOR_RGBA2GRAY);
+  let srcVec = new cv.MatVector();
+  srcVec.push_back(dstC1);
+  let scale = 2;
+  let channels = [0], histSize = [src.cols/scale], ranges = [0,255];
+  let hist = new cv.Mat(), mask = new cv.Mat(), color = new cv.Scalar(0xfb, 0xca, 0x04, 0xff);
+  cv.calcHist(srcVec, channels, mask, hist, histSize, ranges);
+  let result = cv.minMaxLoc(hist, mask);
+  var max = result.maxVal;
+  cv.cvtColor(dstC1, dstC4, cv.COLOR_GRAY2RGBA);
+  // draw histogram on src
+  for(var i = 0; i < histSize[0]; i++)
+  {
+      var binVal = hist.data32F[i] * src.rows / max;
+      cv.rectangle(dstC4, {x: i * scale, y: src.rows - 1}, {x: (i + 1) * scale - 1, y: src.rows - binVal/3}, color, cv.FILLED);
+  }
+  srcVec.delete();
+  mask.delete();
+  hist.delete();
+  return dstC4;
+}
+
+function equalizeHist(src) {
+  cv.cvtColor(src, dstC1, cv.COLOR_RGBA2GRAY, 0);
+  cv.equalizeHist(dstC1, dstC1);
+  return dstC1;
+}
+
+let base;
+
+function backprojection(src) {
+  if (lastFilter !== 'backprojection') {
+    if (base instanceof cv.Mat)
+      base.delete();
+    base = src.clone();
+    cv.cvtColor(base, base, cv.COLOR_RGB2HSV, 0);
+  }
+  cv.cvtColor(src, dstC3, cv.COLOR_RGB2HSV, 0);
+  let baseVec = new cv.MatVector(), targetVec = new cv.MatVector();
+  baseVec.push_back(base); targetVec.push_back(dstC3);
+  let mask = new cv.Mat(), hist = new cv.Mat();
+  let channels = [0], histSize = [50];
+  let ranges;
+  if (controls.backprojectionRangeLow < controls.backprojectionRangeHigh)
+    ranges = [controls.backprojectionRangeLow, controls.backprojectionRangeHigh];
+  else
+    return src;
+  cv.calcHist(baseVec, channels, mask, hist, histSize, ranges);
+  cv.normalize(hist, hist, 0, 255, cv.NORM_MINMAX);
+  cv.calcBackProject(targetVec, channels, hist, dstC1, ranges, 1);
+  baseVec.delete();
+  targetVec.delete();
+  mask.delete();
+  hist.delete();
+  return dstC1;
+}
+
+function erosion(src) {
+  let kernelSize = controls.erosionSize;
+  let kernel = cv.Mat.ones(kernelSize, kernelSize, cv.CV_8U);
+  let color = new cv.Scalar();
+  cv.erode(src, dstC4, kernel, {x: -1, y: -1}, 1, Number(controls.erosionBorderType), color);
+  kernel.delete();
+  return dstC4;
+}
+
+function dilation(src) {
+  let kernelSize = controls.dilationSize;
+  let kernel = cv.Mat.ones(kernelSize, kernelSize, cv.CV_8U);
+  let color = new cv.Scalar();
+  cv.dilate(src, dstC4, kernel, {x: -1, y: -1}, 1, Number(controls.dilationBorderType), color);
+  kernel.delete();
+  return dstC4;
+}
+
+function morphology(src) {
+  let kernelSize = controls.morphologySize;
+  let kernel = cv.getStructuringElement(Number(controls.morphologyShape), {width: kernelSize, height: kernelSize});
+  let color = new cv.Scalar();
+  let op = Number(controls.morphologyOp);
+  let image = src;
+  if (op === cv.MORPH_GRADIENT || op === cv.MORPH_TOPHAT || op === cv.MORPH_BLACKHAT) {
+    cv.cvtColor(src, dstC3, cv.COLOR_RGBA2RGB);
+    image = dstC3;
+  }
+  cv.morphologyEx(image, dstC4, op, kernel, {x: -1, y: -1}, 1, Number(controls.morphologyBorderType), color);
+  kernel.delete();
+  return dstC4;
+}
+
 function superposeFilters(newFilter){
   if (newFilter== 'passThrough') {
     filtersArray = ['passThrough']; 
@@ -146,6 +328,22 @@ function applyFilterCombination(filtersArray){
       case 'gray':  previousFilter = gray(previousFilter); break;
       case 'gaussianBlur':  previousFilter = gaussianBlur(previousFilter); break;
       case 'threshold': previousFilter = threshold(previousFilter); break;
+      case 'hsv': previousFilter = hsv(previousFilter); break;
+      case 'canny': previousFilter = canny(previousFilter); break;
+      case 'inRange': previousFilter = inRange(previousFilter); break;
+      case 'adaptiveThreshold': previousFilter = adaptiveThreshold(previousFilter); break;
+      case 'bilateralFilter': previousFilter = bilateralFilter(previousFilter); break;
+      case 'medianBlur': previousFilter = medianBlur(previousFilter); break;
+      case 'sobel': previousFilter = sobel(previousFilter); break;
+      case 'scharr': previousFilter = scharr(previousFilter); break;
+      case 'laplacian': previousFilter = laplacian(previousFilter); break;
+      case 'contours': previousFilter = contours(previousFilter); break;
+      case 'calcHist': previousFilter = calcHist(previousFilter); break;
+      case 'equalizeHist': previousFilter = equalizeHist(previousFilter); break;
+      case 'backprojection': previousFilter = backprojection(previousFilter); break;
+      case 'erosion': previousFilter = erosion(previousFilter); break;
+      case 'dilation': previousFilter = dilation(previousFilter); break;
+      case 'morphology': previousFilter = morphology(previousFilter); break;
     }
     //console.log(previousFilter);
   });
@@ -161,6 +359,22 @@ function processVideo() {
     case 'gray': superposeFilters('gray'); break;
     case 'gaussianBlur': superposeFilters('gaussianBlur'); break;
     case 'threshold': superposeFilters('threshold'); break;
+    case 'hsv' : superposeFilters('hsv'); break;
+    case 'canny' : superposeFilters('canny'); break;
+    case 'inRange' : superposeFilters('inRange'); break;
+    case 'adaptiveThreshold' : superposeFilters('adaptiveThreshold'); break;
+    case 'bilateralFilter' : superposeFilters('bilateralFilter'); break;
+    case 'medianBlur' : superposeFilters('medianBlur'); break;
+    case 'sobel' : superposeFilters('sobel'); break;
+    case 'scharr' : superposeFilters('scharr'); break;
+    case 'laplacian' : superposeFilters('laplacian'); break;
+    case 'contours' : superposeFilters('contours'); break;
+    case 'calcHist' : superposeFilters('calcHist'); break;
+    case 'equalizeHist' : superposeFilters('equalizeHist'); break;
+    case 'backprojection' : superposeFilters('backprojection'); break;
+    case 'erosion' : superposeFilters('erosion'); break;
+    case 'dilation' : superposeFilters('dilation'); break;
+    case 'morphology' : superposeFilters('morphology'); break;
     default: superposeFilters('passThrough');
   }
   console.log(filtersArray)  
@@ -173,6 +387,7 @@ function processVideo() {
 function stopVideoProcessing() {
   if (src != null && !src.isDeleted()) src.delete();
   if (dstC1 != null && !dstC1.isDeleted()) dstC1.delete();
+  if (dstC3 != null && !dstC3.isDeleted()) dstC3.delete();
   if (dstC4 != null && !dstC4.isDeleted()) dstC4.delete();
 }
 
@@ -183,6 +398,22 @@ var filters = {
   'gaussianBlur': 'Gaussian Blurring',
   'gray': 'Gray',
   'threshold': 'Threshold',
+  'hsv': 'HSV',
+  'canny': 'Canny Edge Detection',
+  'inRange': 'In Range',
+  'adaptiveThreshold': 'Adaptive Threshold',
+  'medianBlur': 'Median Blurring',
+  'bilateralFilter': 'Bilateral Filtering',
+  'sobel': 'Sobel Derivatives',
+  'scharr': 'Scharr Derivatives',
+  'laplacian': 'Laplacian Derivatives',
+  'contours': 'Contours',
+  'calcHist': 'Calculation',
+  'equalizeHist': 'Equalization',
+  'backprojection': 'Backprojection',
+  'erosion': 'Erosion',
+  'dilation': 'Dilation',
+  'morphology': 'Morphology',
 };
 
 var filterName = document.getElementById('filterName');
@@ -206,6 +437,40 @@ function initUI() {
     gray: function() { this.setFilter('gray'); },
     threshold: function() { this.setFilter('threshold'); },
     thresholdValue: 100,
+    hsv: function() { this.setFilter('hsv'); },
+    inRange: function() { this.setFilter('inRange'); },
+    inRangeLow: 75,
+    inRangeHigh: 150,
+    adaptiveThreshold: function() { this.setFilter('adaptiveThreshold'); },
+    adaptiveBlockSize: 3,
+    medianBlur: function() { this.setFilter('medianBlur'); },
+    medianBlurSize: 5,
+    bilateralFilter: function() { this.setFilter('bilateralFilter'); },
+    bilateralFilterDiameter: 5,
+    bilateralFilterSigma: 75,
+    sobel: function() { this.setFilter('sobel'); },
+    sobelSize: 3,
+    scharr: function() { this.setFilter('scharr'); },
+    laplacian: function() { this.setFilter('laplacian'); },
+    laplacianSize: 3,
+    canny: function() { this.setFilter('canny'); },
+    cannyThreshold1: 150,
+    cannyThreshold2: 300,
+    cannyApertureSize: 3,
+    cannyL2Gradient: false,
+    contours: function() { this.setFilter('contours'); },
+    contoursMode: cv.RETR_CCOMP,
+    contoursMethod: cv.CHAIN_APPROX_SIMPLE,
+    calcHist: function() { this.setFilter('calcHist'); },
+    equalizeHist: function() { this.setFilter('equalizeHist'); },
+    backprojection: function() { this.setFilter('backprojection'); },
+    backprojectionRangeLow: 0,
+    backprojectionRangeHigh: 150,
+    morphology: function () { this.setFilter('morphology'); },
+    morphologyShape: cv.MORPH_RECT,
+    morphologyOp: cv.MORPH_ERODE,
+    morphologySize: 5,
+    morphologyBorderType: cv.BORDER_CONSTANT,
   };
   
   let gui = new dat.GUI({ autoPlace: false });
@@ -228,21 +493,121 @@ function initUI() {
   colorConversion.add(controls, 'gray').name(filters['gray']).onChange(function() {
     closeLastFolder(null);
   });
+
+  colorConversion.add(controls, 'hsv').name(filters['hsv']).onChange(function() {
+    closeLastFolder(null);
+  });
+
+  let inRange = colorConversion.addFolder(filters['inRange']);
+  inRange.domElement.onclick = function() {
+    closeLastFolder(inRange);
+    controls.inRange();
+  };
+  inRange.add(controls, 'inRangeLow', 0, 255, 1).name('lower boundary');
+  inRange.add(controls, 'inRangeHigh', 0, 255, 1).name('higher boundary');
   
-  let gaussianBlur = gui.addFolder(filters['gaussianBlur']);
+  let thresholding = gui.addFolder('Thresholding');
+  
+  let threshold = thresholding.addFolder(filters['threshold']);
+  threshold.domElement.onclick = function() {
+    closeLastFolder(threshold);
+    controls.threshold();
+  };
+  threshold.add(controls, 'thresholdValue', 0, 200, 1).name('threshold value');
+  
+  let adaptiveThreshold = thresholding.addFolder(filters['adaptiveThreshold']);
+  adaptiveThreshold.domElement.onclick = function() {
+    closeLastFolder(adaptiveThreshold);
+    controls.adaptiveThreshold();
+  };
+  adaptiveThreshold.add(controls, 'adaptiveBlockSize', 3, 99, 1).name('block size').onChange(function(value) { if (value % 2 === 0) controls.adaptiveBlockSize = value + 1;});
+  
+  let smoothing = gui.addFolder('Smoothing');
+  
+  let gaussianBlur = smoothing.addFolder(filters['gaussianBlur']);
   gaussianBlur.domElement.onclick = function() {
     closeLastFolder(gaussianBlur);
     controls.gaussianBlur();
   };
   gaussianBlur.add(controls, 'gaussianBlurSize', 7, 99, 1).name('kernel size').onChange(function(value) { if (value % 2 === 0) controls.gaussianBlurSize = value + 1;});
   
-  let threshold = gui.addFolder('Thresholding');
-  
-  threshold.domElement.onclick = function() {
-    closeLastFolder(threshold);
-    controls.threshold();
+  let medianBlur = smoothing.addFolder(filters['medianBlur']);
+  medianBlur.domElement.onclick = function() {
+    closeLastFolder(medianBlur);
+    controls.medianBlur();
   };
-  threshold.add(controls, 'thresholdValue', 0, 200, 1).name('threshold value');  
+  medianBlur.add(controls, 'medianBlurSize', 3, 99, 1).name('kernel size').onChange(function(value) { if (value % 2 === 0) controls.medianBlurSize = value + 1;});
+  
+  let bilateralFilter = smoothing.addFolder(filters['bilateralFilter']);
+  bilateralFilter.domElement.onclick = function() {
+    closeLastFolder(bilateralFilter);
+    controls.bilateralFilter();
+  };
+  bilateralFilter.add(controls, 'bilateralFilterDiameter', 1, 15, 1).name('diameter');
+  bilateralFilter.add(controls, 'bilateralFilterSigma', 1, 255, 1).name('sigma')
+  
+  let morphology = gui.addFolder('Morphology');
+  morphology.domElement.onclick = function() {
+    closeLastFolder(morphology);
+    controls.morphology();
+  };
+  morphology.add(controls, 'morphologyOp', {'MORPH_ERODE': cv.MORPH_ERODE, 'MORPH_DILATE': cv.MORPH_DILATE, 'MORPH_OPEN ': cv.MORPH_OPEN, 'MORPH_CLOSE': cv.MORPH_CLOSE, 'MORPH_GRADIENT': cv.MORPH_GRADIENT, 'MORPH_TOPHAT': cv.MORPH_TOPHAT, 'MORPH_BLACKHAT': cv.MORPH_BLACKHAT}).name('operation');
+  morphology.add(controls, 'morphologyShape', {'MORPH_RECT': cv.MORPH_RECT, 'MORPH_CROSS': cv.MORPH_CROSS, 'MORPH_ELLIPSE': cv.MORPH_ELLIPSE}).name('shape');
+  morphology.add(controls, 'morphologySize', 1, 15, 1).name('kernel size').onChange(function(value) { if (value % 2 === 0) controls.morphologySize = value + 1;});
+  morphology.add(controls, 'morphologyBorderType', {'BORDER_CONSTANT': cv.BORDER_CONSTANT, 'BORDER_REPLICATE': cv.BORDER_REPLICATE, 'BORDER_REFLECT': cv.BORDER_REFLECT, 'BORDER_REFLECT_101': cv.BORDER_REFLECT_101}).name('boarder type');
+
+  let gradients = gui.addFolder('Gradients')
+  let sobel = gradients.addFolder(filters['sobel']);
+  sobel.domElement.onclick = function() {
+    closeLastFolder(sobel);
+    controls.sobel();
+  };
+  sobel.add(controls, 'sobelSize', 3, 19, 1).name('kernel size').onChange(function(value) { if (value % 2 === 0) controls.sobelSize = value + 1;});
+  
+  gradients.add(controls, 'scharr').name(filters['scharr']).onChange(function() {
+    closeLastFolder(null);
+  });
+
+  let laplacian = gradients.addFolder(filters['laplacian']);
+  laplacian.domElement.onclick = function() {
+    closeLastFolder(laplacian);
+    controls.laplacian();
+  };
+  laplacian.add(controls, 'laplacianSize', 1, 19, 1).name('kernel size').onChange(function(value) { if (value % 2 === 0) controls.laplacianSize = value + 1;});
+
+  let canny = gui.addFolder(filters['canny']);
+  canny.domElement.onclick = function() {
+    closeLastFolder(canny);
+    controls.canny();
+  };
+  canny.add(controls, 'cannyThreshold1', 1, 500, 1).name('threshold1');
+  canny.add(controls, 'cannyThreshold2', 1, 500, 1).name('threshold2');
+  canny.add(controls, 'cannyApertureSize', 3, 7, 1).name('aperture size').onChange(function(value) { if (value % 2 === 0) controls.cannyApertureSize = value + 1;});
+  canny.add(controls, 'cannyL2Gradient').name('l2 gradient');
+
+  let contours = gui.addFolder(filters['contours']);
+  contours.domElement.onclick = function() {
+    closeLastFolder(contours);
+    controls.contours();
+  };
+  contours.add(controls, 'contoursMode', {'RETR_EXTERNAL': cv.RETR_EXTERNAL, 'RETR_LIST': cv.RETR_LIST, 'RETR_CCOMP': cv.RETR_CCOMP, 'RETR_TREE': cv.RETR_TREE}).name('mode');
+  contours.add(controls, 'contoursMethod', {'CHAIN_APPROX_NONE': cv.CHAIN_APPROX_NONE, 'CHAIN_APPROX_SIMPLE': cv.CHAIN_APPROX_SIMPLE, 'CHAIN_APPROX_TC89_L1': cv.CHAIN_APPROX_TC89_L1, 'CHAIN_APPROX_TC89_KCOS': cv.CHAIN_APPROX_TC89_KCOS}).name('method');
+  
+  let histograms = gui.addFolder('Histograms');
+  histograms.add(controls, 'calcHist').name(filters['calcHist']).onChange(function() {
+    closeLastFolder(null);
+  })
+  histograms.add(controls, 'equalizeHist').name(filters['equalizeHist']).onChange(function() {
+    closeLastFolder(null);
+  });
+  
+  let backprojection = histograms.addFolder(filters['backprojection']);
+  backprojection.domElement.onclick = function() {
+    closeLastFolder(backprojection);
+    controls.backprojection();
+  };
+  backprojection.add(controls, 'backprojectionRangeLow', 0, 255, 1).name('range low');
+  backprojection.add(controls, 'backprojectionRangeHigh', 0, 255, 1).name('range high');
 }
 
 function opencvIsReady() {
