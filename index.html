@@ -38,9 +38,7 @@
     <body>
         <div id="container">
 
-            <p>Get available video sources from <code>mediaDevices.enumerateDevices()</code>
-                then set the source for <code>getUserMedia()</code> using a <code>deviceId</code> constraint.</p>
-            <p><b>Note:</b> without permission, the browser will restrict the available devices to at most one per type.</p>
+            <div id="error"></div>
 
             <div class="select">
                 <label for="videoSource">Video source: </label><select id="videoSource"></select>
