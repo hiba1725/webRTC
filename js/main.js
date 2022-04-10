@@ -39,6 +39,8 @@ function gotStream(stream) {
 
 function handleError(error) {
   console.log('navigator.MediaDevices.getUserMedia error: ', error.message, error.name);
+  var error = document.getElementById("error");
+  error.innerHTML = error.message + error.name;
 }
 
 function start() {
