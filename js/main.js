@@ -62,7 +62,7 @@ function start() {
   .then(function(s){
     window.stream=s;
     videoElement.srcObject=s;
-    video.play();
+    // video.play();
     return navigator.mediaDevices.enumerateDevices();
   })
   .then(gotDevices)
