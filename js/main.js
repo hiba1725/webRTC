@@ -39,6 +39,8 @@ navigator.mediaDevices.enumerateDevices().then(gotDevices).catch(handleError);
 
 function handleError(error) {
   console.log('navigator.MediaDevices.getUserMedia error: ', error.message, error.name);
+  var error = document.getElementById("error");
+  error.innerHTML = error.message + error.name;
 }
 
 let streaming = false;
@@ -55,7 +57,7 @@ function start() {
     audio: false,
     video: {deviceId: videoSource ? {exact: videoSource} : undefined}
   };
-  navigator.mediaDevices.getUserMedia(constraints)//.then(gotStream).then(gotDevices).catch(handleError);
+  // navigator.mediaDevices.getUserMedia(constraints)//.then(gotStream).then(gotDevices).catch(handleError);
   navigator.mediaDevices.getUserMedia(constraints)
   .then(function(s){
     window.stream=s;
